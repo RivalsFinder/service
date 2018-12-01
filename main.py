@@ -1,7 +1,23 @@
 import re
 import sbis
+import json
 import requests
+from flask import Flask, Config, jsonify
 from const import *
+
+app = Flask(__name__)
+
+
+@app.route('/')
+@app.route('/index')
+def index():
+    return jsonify({"hi": 1})
+
+
+@app.route('/news', methods=['GET'])
+def get_news():
+    return jsonify(items=get_news_list()), 200, {'Content-Type': 'application/json; charset=utf-8'}
+
 
 class NewsInfo:
     AuthorName = ''
@@ -9,28 +25,22 @@ class NewsInfo:
     Brief = ''
     DateTime = ''
     NewsLink = ''
-    AuthorCallLink = ''
-    AuthorUUID = ''
 
-    def __init__(self, author_name='', title='', brief='', date_time='', news_link='', call_link='', author_uuid=''):
+    def __init__(self, author_name='', title='', brief='', date_time='', news_link=''):
         self.AuthorName = author_name
         self.Title = title
         self.Brief = brief
         self.DateTime = date_time
         self.NewsLink = news_link
-        self.AuthorCallLink = call_link
-        self.AuthorUUID = author_uuid
 
     def get_json(self):
-        return {
-            'AuthorName': self.AuthorName,
+        return json.dumps({
+            'Name': self.AuthorName,
             'Title': self.Title,
-            'Brief': self.Brief,
-            'DateTime': self.DateTime,
-            'NewsLink': self.NewsLink,
-            'AuthorCallLink': self.AuthorCallLink,
-            'AuthorUUID': self.AuthorUUID
-        }
+            'Text': self.Brief,
+            'Date': self.DateTime,
+            'Link': self.NewsLink
+        }, ensure_ascii = False)
 
 
 class RecordFilter:
@@ -69,7 +79,8 @@ def event_list(record_filter=RecordFilter()):
     })
     return events
 
-if __name__ == '__main__':
+
+def get_news_list():
     # Залогинимся, под системным юзером
     sbis.login(BASE_URL, SYSTEM_LOGIN, SYSTEM_PASS)
 
@@ -82,10 +93,8 @@ if __name__ == '__main__':
                      title=get_str(news['RecordNews'], 'Title'),
                      brief=re.sub(r'<.*?>', r'', get_str(news['RecordNews'], 'Brief')),
                      date_time=get_str(news, 'LentaDateTime'),
-                     news_link=LINK_PREFIX.format(get_str(news, 'Object')),
-                     call_link=CALL_LINK_PREFIX.format(get_str(news, 'Author')),
-                     author_uuid=get_str(news, 'Author')
+                     news_link=LINK_PREFIX.format(get_str(news, 'Object'))
                      ).get_json()
         )
-
-    print(news_list_json)
+    # print(news_list_json)
+    return news_list_json
